@@ -2,6 +2,8 @@ import requests
 import json
 import uuid
 import base64
+import threading
+import time
 from flask import Flask, request
 
 # Настройки API Bitrix24
@@ -15,6 +17,19 @@ BITRIX_DISK_UPLOAD_URL = f"{BITRIX_URL}/disk.folder.uploadfile"
 BITRIX_FILE_FIELD = "ufCrm8_1741619470239"  # Поле для ссылки на файл
 
 app = Flask(__name__)
+
+def keep_alive():
+    while True:
+        try:
+            requests.get("https://jj-e1x1.onrender.com")
+            requests.get("https://bbb-2ws1.onrender.com")
+            print("Keep-alive ping sent.")
+        except Exception as e:
+            print(f"Ping failed: {e}")
+        time.sleep(60)  # Пинговать каждую минуту
+
+# Запуск фонового потока
+threading.Thread(target=keep_alive, daemon=True).start()
 
 def download_template():
     """ Скачивает шаблон из Bitrix24 """
