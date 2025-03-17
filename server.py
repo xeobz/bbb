@@ -2,7 +2,8 @@ import requests
 import json
 import uuid
 import base64
-
+import threading
+import time
 from flask import Flask, request
 
 # Настройки API Bitrix24
@@ -14,6 +15,31 @@ BITRIX_ITEM_UPDATE_URL = f"{BITRIX_URL}/crm.item.update"
 BITRIX_DISK_DOWNLOAD_URL = f"{BITRIX_URL}/disk.file.get"
 BITRIX_DISK_UPLOAD_URL = f"{BITRIX_URL}/disk.folder.uploadfile"
 BITRIX_FILE_FIELD = "ufCrm8_1741619470239"  # Поле для ссылки на файл
+# URL для Keep-Alive
+SERVER_URL = "https://bbb-2ws1.onrender.com"
+
+def keep_alive():
+    while True:
+        try:
+            response = requests.get(SERVER_URL, timeout=5)
+            if response.status_code != 200:
+                print(f"⚠️ {SERVER_URL} ответил {response.status_code}. Повтор через 5 сек...")
+                time.sleep(5)
+                requests.get(SERVER_URL, timeout=5)
+            print(f"✅ Keep-alive ping sent to {SERVER_URL}")
+        except requests.exceptions.RequestException:
+            print(f"❌ {SERVER_URL} не отвечает. Пробуем через 5 сек...")
+            time.sleep(5)
+            try:
+                requests.get(SERVER_URL, timeout=5)
+            except:
+                print(f"❌ {SERVER_URL} недоступен даже после повторного запроса.")
+        time.sleep(300)  # 5 минут
+
+# Запуск Keep-Alive потока для сервера
+threading.Thread(target=keep_alive, daemon=True).start()
+
+
 
 app = Flask(__name__)
 
