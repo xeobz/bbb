@@ -32,6 +32,8 @@ def download_template():
         print(f"❌ Ошибка скачивания файла: {file_response.status_code}")
         return None
 
+import io
+
 def upload_template_and_update(item_id):
     """ Загружает файл-шаблон в папку 'Отчеты' и обновляет сделку ссылкой """
     file_content = download_template()
@@ -40,23 +42,30 @@ def upload_template_and_update(item_id):
     
     unique_id = uuid.uuid4().hex[:8]  # Генерация уникального ID
     new_file_name = f"Сценарий продаж_{unique_id}.xlsx"
-    encoded_content = base64.b64encode(file_content).decode('utf-8')
-    
-    # Загружаем файл в папку "Отчеты"
-    upload_response = requests.post(BITRIX_DISK_UPLOAD_URL, json={
-        "id": BITRIX_REPORT_FOLDER_ID,
-        "file": {"name": new_file_name, "content": encoded_content}
-    })
-    
-    upload_data = upload_response.json()
-    if "result" not in upload_data or not upload_data["result"].get("ID"):
-        print(f"❌ Ошибка загрузки файла: {upload_data}")
+
+    # 1. Запрашиваем URL для загрузки файла
+    upload_url_response = requests.post(BITRIX_DISK_UPLOAD_URL, json={"id": BITRIX_REPORT_FOLDER_ID})
+    upload_url_data = upload_url_response.json()
+
+    if "result" not in upload_url_data or "uploadUrl" not in upload_url_data["result"]:
+        print(f"❌ Ошибка получения uploadUrl: {upload_url_data}")
         return
-    
-    new_file_id = upload_data["result"]["ID"]
-    new_file_url = upload_data["result"].get("DETAIL_URL", "")
+
+    upload_url = upload_url_data["result"]["uploadUrl"]
+
+    # 2. Загружаем файл через полученный uploadUrl
+    files = {"file": (new_file_name, io.BytesIO(file_content))}
+    upload_file_response = requests.post(upload_url, files=files)
+    upload_file_data = upload_file_response.json()
+
+    if "result" not in upload_file_data or not upload_file_data["result"].get("ID"):
+        print(f"❌ Ошибка загрузки файла: {upload_file_data}")
+        return
+
+    new_file_id = upload_file_data["result"]["ID"]
+    new_file_url = upload_file_data["result"].get("DETAIL_URL", "")
     print(f"✅ Файл {new_file_name} загружен, ID: {new_file_id}, URL: {new_file_url}")
-    
+
     # Обновляем сделку ссылкой на файл
     update_response = requests.post(BITRIX_ITEM_UPDATE_URL, json={
         "entityTypeId": BITRIX_SMART_PROCESS_ID,
