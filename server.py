@@ -32,6 +32,7 @@ def download_template():
         print(f"❌ Ошибка скачивания файла: {file_response.status_code}")
         return None
 
+
 import io
 
 def upload_template_and_update(item_id):
